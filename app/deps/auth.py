@@ -1,11 +1,10 @@
 from __future__ import annotations
 
-from dataclasses import Field
 from typing import Any
 
 from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
 
 from app.core.firebase import FirebaseClientFactory, get_firebase_admin
 from app.models.user import UserRole
@@ -21,7 +20,7 @@ class AuthenticatedUser(BaseModel):
     uid: str
     email: str | None = None
     roles: set[UserRole] = Field(default_factory=set)
-    claims: dict[str, Any] = {}
+    claims: dict[str, Any] = Field(default_factory=dict)
 
 
 def _extract_claims(decoded_token: dict[str, Any]) -> dict[str, Any]:

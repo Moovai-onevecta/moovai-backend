@@ -50,7 +50,7 @@ class FirebaseAdmin:
         needed or wanted in the image.
         """
         key_path = settings.firebase_service_account_key_path
-        if settings.environment == "local" and key_path:
+        if settings.environment == "development" and key_path:
             path = Path(key_path)
             if not path.is_file():
                 raise FileNotFoundError(

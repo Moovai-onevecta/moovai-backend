@@ -19,9 +19,7 @@ class Destination(BaseModel):
     @model_validator(mode="after")
     def validate_dates(self) -> Destination:
         if self.departure_date < self.arrival_date:
-            raise ValueError(
-                "departure_date must be on or after arrival_date"
-            )
+            raise ValueError("departure_date must be on or after arrival_date")
 
         return self
 
@@ -41,9 +39,7 @@ class Flight(BaseModel):
     @model_validator(mode="after")
     def validate_times(self) -> Flight:
         if self.arrival_time <= self.departure_time:
-            raise ValueError(
-                "arrival_time must be after departure_time"
-            )
+            raise ValueError("arrival_time must be after departure_time")
 
         return self
 
@@ -67,9 +63,7 @@ class Itinerary(BaseModel):
     @model_validator(mode="after")
     def validate_dates(self) -> Itinerary:
         if self.end_date < self.start_date:
-            raise ValueError(
-                "end_date must be on or after start_date"
-            )
+            raise ValueError("end_date must be on or after start_date")
 
         return self
 
@@ -78,8 +72,6 @@ class Itinerary(BaseModel):
         orders = [destination.order for destination in self.destinations]
 
         if len(orders) != len(set(orders)):
-            raise ValueError(
-                "destination order values must be unique"
-            )
+            raise ValueError("destination order values must be unique")
 
         return self

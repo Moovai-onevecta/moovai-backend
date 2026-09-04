@@ -49,12 +49,8 @@ def test_flight_arrival_after_departure():
             flight_number="TP123",
             departure_airport="JFK",
             arrival_airport="LIS",
-            departure_time=datetime(
-                2026, 5, 1, 12, 0
-            ),
-            arrival_time=datetime(
-                2026, 5, 1, 10, 0
-            ),
+            departure_time=datetime(2026, 5, 1, 12, 0),
+            arrival_time=datetime(2026, 5, 1, 10, 0),
         )
 
 

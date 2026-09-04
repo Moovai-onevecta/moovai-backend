@@ -33,5 +33,7 @@ def get_item(
 ) -> Item:
     item = items.get(item_id)
     if item is None or item.owner_uid != user.uid:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Item not found")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Item not found"
+        )
     return item

@@ -35,7 +35,7 @@ def _clear_firebase_admin_cache() -> None:
 
 
 @pytest.fixture
-def mock_firebase_admin(mocker: "pytest_mock.MockerFixture") -> MagicMock:  # noqa: F821
+def mock_firebase_admin(mocker: pytest_mock.MockerFixture) -> MagicMock:  # noqa: F821
     """Patch the firebase_admin module functions that FirebaseAdmin calls."""
     module = mocker.patch("app.core.firebase.firebase_admin")
     module.get_app.side_effect = ValueError("no app with this name exists")
@@ -44,17 +44,17 @@ def mock_firebase_admin(mocker: "pytest_mock.MockerFixture") -> MagicMock:  # no
 
 
 @pytest.fixture
-def mock_credentials(mocker: "pytest_mock.MockerFixture") -> MagicMock:  # noqa: F821
+def mock_credentials(mocker: pytest_mock.MockerFixture) -> MagicMock:  # noqa: F821
     return mocker.patch("app.core.firebase.credentials")
 
 
 @pytest.fixture
-def mock_auth(mocker: "pytest_mock.MockerFixture") -> MagicMock:  # noqa: F821
+def mock_auth(mocker: pytest_mock.MockerFixture) -> MagicMock:  # noqa: F821
     return mocker.patch("app.core.firebase.auth")
 
 
 @pytest.fixture
-def mock_firestore(mocker: "pytest_mock.MockerFixture") -> MagicMock:  # noqa: F821
+def mock_firestore(mocker: pytest_mock.MockerFixture) -> MagicMock:  # noqa: F821
     return mocker.patch("app.core.firebase.firestore")
 
 
@@ -62,7 +62,9 @@ class TestCredentialSelection:
     def test_production_uses_application_default_credentials(
         self, mock_firebase_admin: MagicMock, mock_credentials: MagicMock
     ) -> None:
-        settings = make_settings(environment="production", firebase_service_account_key_path=None)
+        settings = make_settings(
+            environment="production", firebase_service_account_key_path=None
+        )
 
         FirebaseAdmin(settings)
 
@@ -77,7 +79,9 @@ class TestCredentialSelection:
     ) -> None:
         key_file = tmp_path / "service-account.json"
         key_file.write_text("{}")
-        settings = make_settings(environment="local", firebase_service_account_key_path=str(key_file))
+        settings = make_settings(
+            environment="local", firebase_service_account_key_path=str(key_file)
+        )
 
         FirebaseAdmin(settings)
 
@@ -87,7 +91,9 @@ class TestCredentialSelection:
     def test_local_without_key_path_falls_back_to_application_default(
         self, mock_firebase_admin: MagicMock, mock_credentials: MagicMock
     ) -> None:
-        settings = make_settings(environment="local", firebase_service_account_key_path=None)
+        settings = make_settings(
+            environment="local", firebase_service_account_key_path=None
+        )
 
         FirebaseAdmin(settings)
 
@@ -109,7 +115,9 @@ class TestAppInitialization:
     def test_initializes_app_once_with_configured_name_and_project(
         self, mock_firebase_admin: MagicMock, mock_credentials: MagicMock
     ) -> None:
-        settings = make_settings(firebase_app_name="my-app", firebase_project_id="my-project")
+        settings = make_settings(
+            firebase_app_name="my-app", firebase_project_id="my-project"
+        )
 
         FirebaseAdmin(settings)
 
@@ -162,13 +170,18 @@ class TestVerifyIdToken:
 
         claims = admin.verify_id_token("some-id-token")
 
-        mock_auth.verify_id_token.assert_called_once_with("some-id-token", app=admin._app)
+        mock_auth.verify_id_token.assert_called_once_with(
+            "some-id-token", app=admin._app
+        )
         assert claims == {"uid": "abc123"}
 
 
 class TestGetFirebaseAdmin:
     def test_returns_same_instance_across_calls(
-        self, mock_firebase_admin: MagicMock, mock_credentials: MagicMock, mocker: "pytest_mock.MockerFixture"  # noqa: F821
+        self,
+        mock_firebase_admin: MagicMock,
+        mock_credentials: MagicMock,
+        mocker: pytest_mock.MockerFixture,  # noqa: F821
     ) -> None:
         mocker.patch("app.core.firebase.get_settings", return_value=make_settings())
 

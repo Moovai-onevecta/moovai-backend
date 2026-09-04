@@ -36,8 +36,10 @@ module = ["firebase_admin.*"]
 ignore_missing_imports = true
 
 [tool.ruff]
-line-length = 100
-target-version = "py311"
+line-length = 88
+
+[tool.ruff.format]
+quote-style = "double"
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "UP", "B"]
@@ -50,6 +52,7 @@ build-backend = "setuptools.build_meta"
 [dependency-groups]
 dev = [
     "pytest-mock>=3.15.1",
+    "ruff>=0.16.6",
 ]
 
 [tool.setuptools.packages.find]

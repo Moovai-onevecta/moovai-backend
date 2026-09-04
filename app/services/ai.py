@@ -32,6 +32,8 @@ class AIService:
             data = response.json()
 
         reply = "".join(
-            block["text"] for block in data.get("content", []) if block.get("type") == "text"
+            block["text"]
+            for block in data.get("content", [])
+            if block.get("type") == "text"
         )
         return ChatResponse(reply=reply, model=self._model)

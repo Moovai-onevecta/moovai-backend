@@ -1,0 +1,70 @@
+# syntax=docker/dockerfile:1.7
+
+# ---------------------------------------------------------------------------
+# Stage 1: builder
+# Installs dependencies into an isolated venv so the runtime image never
+# needs a compiler toolchain. pyproject.toml stays the single source of
+# truth for dependencies (DRY — no duplicated requirements.txt to drift).
+# ---------------------------------------------------------------------------
+FROM python:3.12-slim AS builder
+
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    PIP_NO_CACHE_DIR=1 \
+    PIP_DISABLE_PIP_VERSION_CHECK=1
+
+# Build deps only exist in this stage — never shipped to runtime.
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    build-essential \
+    && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /build
+
+# Copy only dependency manifests first so this layer is cached whenever
+# app code changes but dependencies don't.
+COPY pyproject.toml README.md ./
+
+RUN python -m venv /opt/venv
+ENV PATH="/opt/venv/bin:$PATH"
+
+# Install project dependencies (not the app itself yet) into the venv.
+RUN pip install --upgrade pip \
+    && pip install .
+
+# ---------------------------------------------------------------------------
+# Stage 2: runtime
+# Minimal image: interpreter + venv + app code only. Runs as non-root.
+# ---------------------------------------------------------------------------
+FROM python:3.12-slim AS runtime
+
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    PATH="/opt/venv/bin:$PATH" \
+    PORT=8080
+
+# Cloud Run sets $PORT at runtime; the app must bind to it (see CMD below).
+# All other config (Firebase project, Anthropic key, CORS origins, etc.)
+# is injected as environment variables at deploy time — never baked into
+# the image — per the app's pydantic-settings config module.
+
+RUN groupadd --system app && useradd --system --gid app --no-create-home app
+
+WORKDIR /app
+
+COPY --from=builder /opt/venv /opt/venv
+COPY app ./app
+COPY pyproject.toml README.md ./
+
+RUN chown -R app:app /app
+USER app
+
+EXPOSE 8080
+
+# Cloud Run health checks / readiness probes should point at GET /health.
+HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
+    CMD python -c "import urllib.request,os; urllib.request.urlopen(f'http://127.0.0.1:{os.environ.get(\"PORT\",8080)}/health')" || exit 1
+
+# Single worker per container is the Cloud Run pattern — let Cloud Run
+# handle horizontal scaling via container concurrency/autoscaling rather
+# than juggling multiple uvicorn workers inside one instance.
+CMD ["sh", "-c", "uvicorn app.main:app --host 0.0.0.0 --port ${PORT}"]

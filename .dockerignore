@@ -1,0 +1,27 @@
+# Version control
+.git
+.gitignore
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.mypy_cache/
+.ruff_cache/
+.pytest_cache/
+*.egg-info/
+.venv/
+venv/
+
+# Tests & local dev
+tests/
+.env
+.env.*
+!.env.example
+
+# Docs & misc
+README.md
+requirements.md
+*.md
+!README.md
+.DS_Store

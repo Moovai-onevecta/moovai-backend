@@ -10,7 +10,8 @@ class Settings(BaseSettings):
     cors_origins: str = "http://localhost:3000"
 
     firebase_project_id: str
-    google_application_credentials: str | None = None
+    firebase_service_account_key_path: str | None = None
+    firebase_app_name: str = "moovai"
 
     anthropic_api_key: str
     anthropic_model: str = "claude-sonnet-5"

@@ -13,15 +13,28 @@ def test_traveler_default_role():
     assert user.roles == {UserRole.TRAVELER}
 
 
-def test_user_can_have_multiple_roles():
+def test_provider_profile():
     user = UserProfile(
         uid="123",
+        email="test@example.com",
+        roles={UserRole.PROVIDER},
+        provider_type=ProviderType.TOUR_GUIDE,
+        cities_served=["Lisbon"],
+    )
+
+    assert user.provider_type == (
+        ProviderType.TOUR_GUIDE
+    )
+
+
+def test_dual_role_user():
+    user = UserProfile(
+        uid="123",
+        email="test@example.com",
         roles={
             UserRole.TRAVELER,
             UserRole.PROVIDER,
         },
-        provider_type=ProviderType.TOUR_GUIDE,
     )
 
-    assert UserRole.TRAVELER in user.roles
-    assert UserRole.PROVIDER in user.roles
+    assert len(user.roles) == 2

@@ -1,8 +1,14 @@
 from __future__ import annotations
 
+from datetime import datetime
 from enum import StrEnum
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import (
+    BaseModel,
+    ConfigDict,
+    EmailStr,
+    Field,
+)
 
 
 class UserRole(StrEnum):
@@ -16,19 +22,28 @@ class ProviderType(StrEnum):
 
 
 class UserProfile(BaseModel):
-    """
-    Firestore document stored in users/{uid}
-    """
-
     model_config = ConfigDict(
-        populate_by_name=True,
         extra="forbid",
     )
 
     uid: str
-    email: str | None = None
+
+    email: EmailStr
+
     display_name: str | None = None
+
+    photo_url: str | None = None
+
     roles: set[UserRole] = Field(default_factory=lambda: {UserRole.TRAVELER})
-    provider_type: ProviderType | None = None
-    cities_served: list[str] = Field(default_factory=list)
+
     is_active: bool = True
+
+    provider_type: ProviderType | None = None
+
+    cities_served: list[str] = Field(default_factory=list)
+
+    provider_bio: str | None = None
+
+    created_at: datetime | None = None
+
+    updated_at: datetime | None = None

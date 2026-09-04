@@ -1,10 +1,12 @@
 from __future__ import annotations
 
+from dataclasses import Field
 from typing import Any
 
 from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from pydantic import BaseModel, ConfigDict
+from app.models.user import UserRole
 
 from app.core.firebase import FirebaseClientFactory, get_firebase_admin
 
@@ -19,6 +21,7 @@ class AuthenticatedUser(BaseModel):
 
     uid: str
     email: str | None = None
+    roles: set[UserRole] = Field(default_factory=set)
     claims: dict[str, Any] = {}
 
 
@@ -40,17 +43,11 @@ def _extract_claims(decoded_token: dict[str, Any]) -> dict[str, Any]:
         "picture",
     }
 
-    return {
-        key: value
-        for key, value in decoded_token.items()
-        if key not in reserved
-    }
+    return {key: value for key, value in decoded_token.items() if key not in reserved}
 
 
 def get_current_user(
-    credentials: HTTPAuthorizationCredentials | None = Depends(
-        bearer_scheme
-    ),
+    credentials: HTTPAuthorizationCredentials | None = Depends(bearer_scheme),
     firebase: FirebaseClientFactory = Depends(get_firebase_admin),
 ) -> AuthenticatedUser:
     """
@@ -82,9 +79,12 @@ def get_current_user(
             detail="Token missing uid",
         )
 
+    roles = {UserRole(role) for role in decoded.get("roles", [])}
+
     return AuthenticatedUser(
         uid=uid,
         email=decoded.get("email"),
+        roles=roles,
         claims=_extract_claims(decoded),
     )
 
@@ -93,3 +93,24 @@ def get_current_uid(
     user: AuthenticatedUser = Depends(get_current_user),
 ) -> str:
     return user.uid
+
+
+def require_role(role: UserRole):
+    def dependency(
+        user: AuthenticatedUser = Depends(get_current_user),
+    ) -> AuthenticatedUser:
+
+        if role not in user.roles:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Insufficient permissions",
+            )
+
+        return user
+
+    return dependency
+
+
+require_traveler = require_role(UserRole.TRAVELER)
+
+require_provider = require_role(UserRole.PROVIDER)

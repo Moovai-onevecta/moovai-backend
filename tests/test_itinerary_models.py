@@ -8,6 +8,7 @@ from app.models.itinerary import (
     Itinerary,
 )
 
+
 def test_create_itinerary():
     itinerary = Itinerary(
         name="Portugal Trip",

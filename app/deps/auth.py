@@ -6,10 +6,9 @@ from typing import Any
 from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from pydantic import BaseModel, ConfigDict
-from app.models.user import UserRole
 
 from app.core.firebase import FirebaseClientFactory, get_firebase_admin
-
+from app.models.user import UserRole
 
 bearer_scheme = HTTPBearer(auto_error=False)
 

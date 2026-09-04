@@ -1,5 +1,7 @@
 from __future__ import annotations
+
 from datetime import date, datetime
+
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 
@@ -15,7 +17,7 @@ class Destination(BaseModel):
     departure_date: date
 
     @model_validator(mode="after")
-    def validate_dates(self) -> "Destination":
+    def validate_dates(self) -> Destination:
         if self.departure_date < self.arrival_date:
             raise ValueError(
                 "departure_date must be on or after arrival_date"
@@ -37,7 +39,7 @@ class Flight(BaseModel):
     arrival_time: datetime
 
     @model_validator(mode="after")
-    def validate_times(self) -> "Flight":
+    def validate_times(self) -> Flight:
         if self.arrival_time <= self.departure_time:
             raise ValueError(
                 "arrival_time must be after departure_time"
@@ -63,7 +65,7 @@ class Itinerary(BaseModel):
     updated_at: datetime | None = None
 
     @model_validator(mode="after")
-    def validate_dates(self) -> "Itinerary":
+    def validate_dates(self) -> Itinerary:
         if self.end_date < self.start_date:
             raise ValueError(
                 "end_date must be on or after start_date"
@@ -72,12 +74,7 @@ class Itinerary(BaseModel):
         return self
 
     @model_validator(mode="after")
-    def validate_dates(self) -> "Itinerary":
-        if self.end_date < self.start_date:
-            raise ValueError(
-                "end_date must be on or after start_date"
-            )
-
+    def validate_destination_order(self) -> Itinerary:
         orders = [destination.order for destination in self.destinations]
 
         if len(orders) != len(set(orders)):

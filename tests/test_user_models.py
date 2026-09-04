@@ -22,9 +22,7 @@ def test_provider_profile():
         cities_served=["Lisbon"],
     )
 
-    assert user.provider_type == (
-        ProviderType.TOUR_GUIDE
-    )
+    assert user.provider_type == (ProviderType.TOUR_GUIDE)
 
 
 def test_dual_role_user():

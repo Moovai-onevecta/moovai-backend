@@ -65,6 +65,29 @@ def handle_response_validation_error(
     )
 
 
+@app.exception_handler(Exception)
+def handle_unexpected_error(_request: Request, exc: Exception) -> JSONResponse:
+    """Catch-all for anything not handled above (e.g. SerpApi/httpx errors
+    raised by SearchService, which aren't wrapped in LLMGenerationError).
+
+    Without this, Starlette's default handler returns a plain-text "Internal
+    Server Error" body with no detail — the frontend's apiFetch expects JSON
+    and would fail to even parse that response, let alone show a useful
+    message. str(exc) is included here specifically so a failed call always
+    surfaces whatever error message exists, not just the LLM-specific paths.
+    """
+    return JSONResponse(
+        status_code=500,
+        content={
+            "error": {
+                "code": "INTERNAL_ERROR",
+                "message": str(exc) or exc.__class__.__name__,
+                "details": None,
+            }
+        },
+    )
+
+
 app.include_router(health.router)
 app.include_router(users.router)
 app.include_router(itineraries.router)

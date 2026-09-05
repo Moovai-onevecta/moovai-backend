@@ -7,7 +7,8 @@ tests/services/test_ai.py for the REST-call-shape test against AIService).
 
 from __future__ import annotations
 
-from unittest.mock import AsyncMock
+from datetime import date
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 from fastapi import FastAPI
@@ -15,10 +16,15 @@ from fastapi.testclient import TestClient
 
 from app.api.routes.ai import router
 from app.deps.auth import AuthenticatedUser, get_current_user
-from app.deps.services import get_ai_service
+from app.deps.services import (
+    get_ai_service,
+    get_chat_history_service,
+    get_itinerary_service,
+)
 from app.exceptions import LLMGenerationError
 from app.main import handle_llm_generation_error
 from app.models.ai import ChatResponse
+from app.models.itinerary import Itinerary
 
 
 @pytest.fixture
@@ -32,12 +38,39 @@ def current_user() -> AuthenticatedUser:
 
 
 @pytest.fixture
-def client(mock_ai: AsyncMock, current_user: AuthenticatedUser) -> TestClient:
+def mock_itinerary_service(current_user: AuthenticatedUser) -> MagicMock:
+    service = MagicMock()
+    service.get_model.return_value = Itinerary(
+        id="itin-1",
+        name="Ghana Trip",
+        owner_uid=current_user.uid,
+        start_date=date(2026, 6, 1),
+        end_date=date(2026, 6, 10),
+    )
+    return service
+
+
+@pytest.fixture
+def mock_chat_history_service() -> MagicMock:
+    return MagicMock()
+
+
+@pytest.fixture
+def client(
+    mock_ai: AsyncMock,
+    current_user: AuthenticatedUser,
+    mock_itinerary_service: MagicMock,
+    mock_chat_history_service: MagicMock,
+) -> TestClient:
     app = FastAPI()
     app.add_exception_handler(LLMGenerationError, handle_llm_generation_error)
     app.include_router(router)
     app.dependency_overrides[get_current_user] = lambda: current_user
     app.dependency_overrides[get_ai_service] = lambda: mock_ai
+    app.dependency_overrides[get_itinerary_service] = lambda: mock_itinerary_service
+    app.dependency_overrides[get_chat_history_service] = lambda: (
+        mock_chat_history_service
+    )
     return TestClient(app)
 
 
@@ -82,7 +115,10 @@ class TestChatAssistant:
 
         response = client.post(
             "/ai/chat/assistant",
-            json={"messages": [{"role": "user", "content": "What about Elmina?"}]},
+            json={
+                "itinerary_id": "itin-1",
+                "messages": [{"role": "user", "content": "What about Elmina?"}],
+            },
         )
 
         assert response.status_code == 200
@@ -98,11 +134,120 @@ class TestChatAssistant:
 
         response = client.post(
             "/ai/chat/assistant",
-            json={"messages": [{"role": "user", "content": "hi"}]},
+            json={
+                "itinerary_id": "itin-1",
+                "messages": [{"role": "user", "content": "hi"}],
+            },
         )
 
         assert response.status_code == 502
         assert response.json()["error"]["code"] == "LLM_GENERATION_FAILED"
+
+    def test_returns_404_when_itinerary_not_owned(
+        self, client: TestClient, mock_itinerary_service: MagicMock
+    ) -> None:
+        mock_itinerary_service.get_model.return_value = None
+
+        response = client.post(
+            "/ai/chat/assistant",
+            json={
+                "itinerary_id": "itin-1",
+                "messages": [{"role": "user", "content": "hi"}],
+            },
+        )
+
+        assert response.status_code == 404
+
+    def test_persists_messages_and_actions_to_chat_history(
+        self,
+        client: TestClient,
+        mock_ai: AsyncMock,
+        mock_chat_history_service: MagicMock,
+    ) -> None:
+        mock_ai.complete_json.return_value = {
+            "reply": "Elmina fits well after Cape Coast.",
+            "suggested_actions": [
+                {
+                    "id": "add-elmina",
+                    "kind": "add_stop",
+                    "title": "Add Elmina as a stop",
+                    "city": "Elmina",
+                    "blurb": "30 min from Cape Coast.",
+                    "est": "Est. half day",
+                    "price": {"amount": 34, "currency": "USD", "is_estimate": True},
+                }
+            ],
+        }
+
+        response = client.post(
+            "/ai/chat/assistant",
+            json={
+                "itinerary_id": "itin-1",
+                "messages": [{"role": "user", "content": "What about Elmina?"}],
+            },
+        )
+
+        assert response.status_code == 200
+        mock_chat_history_service.append_messages.assert_called_once()
+        messages_args = mock_chat_history_service.append_messages.call_args[0]
+        assert messages_args[0] == "itin-1"
+        assert messages_args[1] == "user-1"
+        assert [m.role for m in messages_args[2]] == ["user", "assistant"]
+
+        mock_chat_history_service.append_actions.assert_called_once()
+        actions_args = mock_chat_history_service.append_actions.call_args[0]
+        assert actions_args[2][0].action_id == "add-elmina"
+
+
+class TestGetChatHistory:
+    def test_returns_404_when_itinerary_not_owned(
+        self, client: TestClient, mock_itinerary_service: MagicMock
+    ) -> None:
+        mock_itinerary_service.get_model.return_value = None
+
+        response = client.get("/ai/chat/itin-1/history")
+
+        assert response.status_code == 404
+
+    def test_returns_404_when_no_history_yet(
+        self, client: TestClient, mock_chat_history_service: MagicMock
+    ) -> None:
+        mock_chat_history_service.get_for_itinerary.return_value = None
+
+        response = client.get("/ai/chat/itin-1/history")
+
+        assert response.status_code == 404
+
+
+class TestResolveChatAction:
+    def test_returns_404_when_itinerary_not_owned(
+        self, client: TestClient, mock_itinerary_service: MagicMock
+    ) -> None:
+        mock_itinerary_service.get_model.return_value = None
+
+        response = client.post(
+            "/ai/chat/itin-1/actions/add-elmina/resolve", json={"accepted": True}
+        )
+
+        assert response.status_code == 404
+
+    def test_calls_resolve_action_with_accepted_flag(
+        self, client: TestClient, mock_chat_history_service: MagicMock
+    ) -> None:
+        from app.models.chat_history import ChatHistory
+
+        mock_chat_history_service.resolve_action.return_value = ChatHistory(
+            itinerary_id="itin-1", owner_uid="user-1"
+        )
+
+        response = client.post(
+            "/ai/chat/itin-1/actions/add-elmina/resolve", json={"accepted": True}
+        )
+
+        assert response.status_code == 200
+        mock_chat_history_service.resolve_action.assert_called_once_with(
+            "itin-1", "add-elmina", True
+        )
 
 
 class TestSuggestDestinations:

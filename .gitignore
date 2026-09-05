@@ -4,6 +4,7 @@ __pycache__/
 venv/
 .env
 secrets/
+.secrets/
 *.egg-info/
 .mypy_cache/
 .pytest_cache/

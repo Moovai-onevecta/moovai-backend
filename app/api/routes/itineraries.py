@@ -20,7 +20,7 @@ from pydantic import BaseModel, ConfigDict
 
 from app.deps.auth import AuthenticatedUser, get_current_user
 from app.deps.services import get_itinerary_service
-from app.models.itinerary import Destination, Flight, Itinerary
+from app.models.itinerary import Activity, Destination, Flight, Itinerary
 from app.services.itineraries import ItineraryService
 
 router = APIRouter(prefix="/itineraries", tags=["itineraries"])
@@ -32,6 +32,10 @@ class ItineraryCreateRequest(BaseModel):
     name: str
     start_date: date
     end_date: date
+    departure_city: str | None = None
+    traveler_count: int = 1
+    budget: float | None = None
+    interests: list[str] = []
     destinations: list[Destination] = []
     flights: list[Flight] = []
 
@@ -48,6 +52,10 @@ class ItineraryUpdateRequest(BaseModel):
     name: str | None = None
     start_date: date | None = None
     end_date: date | None = None
+    departure_city: str | None = None
+    traveler_count: int | None = None
+    budget: float | None = None
+    interests: list[str] | None = None
     destinations: list[Destination] | None = None
     flights: list[Flight] | None = None
 
@@ -78,6 +86,10 @@ def create_itinerary(
         name=payload.name,
         start_date=payload.start_date,
         end_date=payload.end_date,
+        departure_city=payload.departure_city,
+        traveler_count=payload.traveler_count,
+        budget=payload.budget,
+        interests=payload.interests,
         destinations=payload.destinations,
         flights=payload.flights,
     )
@@ -115,6 +127,60 @@ def update_itinerary(
 
     # Existence + ownership were just confirmed above, so None here would
     # mean the document vanished between the check and the write.
+    if updated is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Itinerary not found"
+        )
+
+    return updated
+
+
+@router.post(
+    "/{itinerary_id}/destinations",
+    response_model=Itinerary,
+    status_code=status.HTTP_201_CREATED,
+)
+def add_destination(
+    itinerary_id: str,
+    payload: Destination,
+    user: AuthenticatedUser = Depends(get_current_user),
+    service: ItineraryService = Depends(get_itinerary_service),
+) -> Itinerary:
+    itinerary = _get_owned_or_404(itinerary_id, user, service)
+
+    updated_destinations = [
+        destination.model_dump() for destination in [*itinerary.destinations, payload]
+    ]
+    updated = service.update(itinerary_id, {"destinations": updated_destinations})
+
+    # Existence + ownership were just confirmed above, so None here would
+    # mean the document vanished between the check and the write.
+    if updated is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Itinerary not found"
+        )
+
+    return updated
+
+
+@router.post(
+    "/{itinerary_id}/activities",
+    response_model=Itinerary,
+    status_code=status.HTTP_201_CREATED,
+)
+def add_activity(
+    itinerary_id: str,
+    payload: Activity,
+    user: AuthenticatedUser = Depends(get_current_user),
+    service: ItineraryService = Depends(get_itinerary_service),
+) -> Itinerary:
+    itinerary = _get_owned_or_404(itinerary_id, user, service)
+
+    updated_activities = [
+        activity.model_dump() for activity in [*itinerary.activities, payload]
+    ]
+    updated = service.update(itinerary_id, {"activities": updated_activities})
+
     if updated is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail="Itinerary not found"

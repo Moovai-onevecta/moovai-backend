@@ -19,7 +19,7 @@ from fastapi.testclient import TestClient
 from app.api.routes.itineraries import router
 from app.deps.auth import AuthenticatedUser, get_current_user
 from app.deps.services import get_itinerary_service
-from app.models.itinerary import Itinerary
+from app.models.itinerary import Activity, Destination, Itinerary
 
 
 def sample_itinerary(**overrides: Any) -> Itinerary:
@@ -160,6 +160,137 @@ class TestUpdateItinerary:
 
         assert response.status_code == 200
         mock_service.update.assert_called_once_with("itin-1", {"name": "New Name"})
+
+
+class TestAddDestination:
+    def test_returns_404_when_missing(
+        self, client: TestClient, mock_service: MagicMock
+    ) -> None:
+        mock_service.get_model.return_value = None
+
+        response = client.post(
+            "/itineraries/nonexistent/destinations",
+            json={
+                "order": 1,
+                "city": "Accra",
+                "arrival_date": "2026-06-01",
+                "departure_date": "2026-06-05",
+            },
+        )
+
+        assert response.status_code == 404
+
+    def test_returns_404_when_not_owner(
+        self, client: TestClient, mock_service: MagicMock
+    ) -> None:
+        mock_service.get_model.return_value = sample_itinerary(owner_uid="someone-else")
+
+        response = client.post(
+            "/itineraries/itin-1/destinations",
+            json={
+                "order": 1,
+                "city": "Accra",
+                "arrival_date": "2026-06-01",
+                "departure_date": "2026-06-05",
+            },
+        )
+
+        assert response.status_code == 404
+
+    def test_appends_to_existing_destinations(
+        self, client: TestClient, mock_service: MagicMock
+    ) -> None:
+        existing = Destination(
+            order=1,
+            city="Accra",
+            arrival_date=date(2026, 6, 1),
+            departure_date=date(2026, 6, 5),
+        )
+        mock_service.get_model.return_value = sample_itinerary(destinations=[existing])
+        mock_service.update.return_value = sample_itinerary(
+            destinations=[
+                existing,
+                Destination(
+                    order=2,
+                    city="Kumasi",
+                    arrival_date=date(2026, 6, 5),
+                    departure_date=date(2026, 6, 8),
+                ),
+            ]
+        )
+
+        response = client.post(
+            "/itineraries/itin-1/destinations",
+            json={
+                "order": 2,
+                "city": "Kumasi",
+                "arrival_date": "2026-06-05",
+                "departure_date": "2026-06-08",
+            },
+        )
+
+        assert response.status_code == 201
+        call_args = mock_service.update.call_args[0]
+        assert call_args[0] == "itin-1"
+        assert len(call_args[1]["destinations"]) == 2
+        assert call_args[1]["destinations"][1]["city"] == "Kumasi"
+        assert len(response.json()["destinations"]) == 2
+
+
+class TestAddActivity:
+    def test_returns_404_when_missing(
+        self, client: TestClient, mock_service: MagicMock
+    ) -> None:
+        mock_service.get_model.return_value = None
+
+        response = client.post(
+            "/itineraries/nonexistent/activities",
+            json={"order": 1, "destination_order": 1, "title": "Museum visit"},
+        )
+
+        assert response.status_code == 404
+
+    def test_returns_404_when_not_owner(
+        self, client: TestClient, mock_service: MagicMock
+    ) -> None:
+        mock_service.get_model.return_value = sample_itinerary(owner_uid="someone-else")
+
+        response = client.post(
+            "/itineraries/itin-1/activities",
+            json={"order": 1, "destination_order": 1, "title": "Museum visit"},
+        )
+
+        assert response.status_code == 404
+
+    def test_appends_to_existing_activities(
+        self, client: TestClient, mock_service: MagicMock
+    ) -> None:
+        destination = Destination(
+            order=1,
+            city="Accra",
+            arrival_date=date(2026, 6, 1),
+            departure_date=date(2026, 6, 5),
+        )
+        mock_service.get_model.return_value = sample_itinerary(
+            destinations=[destination], activities=[]
+        )
+        mock_service.update.return_value = sample_itinerary(
+            destinations=[destination],
+            activities=[
+                Activity(order=1, destination_order=1, title="Museum visit"),
+            ],
+        )
+
+        response = client.post(
+            "/itineraries/itin-1/activities",
+            json={"order": 1, "destination_order": 1, "title": "Museum visit"},
+        )
+
+        assert response.status_code == 201
+        call_args = mock_service.update.call_args[0]
+        assert call_args[0] == "itin-1"
+        assert call_args[1]["activities"][0]["title"] == "Museum visit"
+        assert len(response.json()["activities"]) == 1
 
 
 class TestDeleteItinerary:

@@ -207,6 +207,7 @@ class SuggestedAction(BaseModel):
 class ChatAssistantRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
+    itinerary_id: str
     messages: list[ChatMessage] = Field(min_length=1)
     context: ChatContext | None = None
 

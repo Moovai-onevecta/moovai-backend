@@ -236,6 +236,80 @@ class TestAddDestination:
         assert call_args[1]["destinations"][1]["city"] == "Kumasi"
         assert len(response.json()["destinations"]) == 2
 
+    def test_widens_itinerary_dates_to_cover_a_destination_outside_them(
+        self, client: TestClient, mock_service: MagicMock
+    ) -> None:
+        # The itinerary's own start_date/end_date (e.g. a placeholder window
+        # set before any real dates were known) shouldn't silently exclude a
+        # destination added later with dates outside that range — the
+        # frontend's day-by-day view is built from start_date/end_date, so a
+        # destination outside them would never appear on any day card.
+        mock_service.get_model.return_value = sample_itinerary(
+            start_date=date(2026, 6, 1), end_date=date(2026, 6, 10)
+        )
+        mock_service.update.return_value = sample_itinerary()
+
+        response = client.post(
+            "/itineraries/itin-1/destinations",
+            json={
+                "order": 1,
+                "city": "Beijing",
+                "arrival_date": "2026-12-01",
+                "departure_date": "2026-12-04",
+            },
+        )
+
+        assert response.status_code == 201
+        updates = mock_service.update.call_args[0][1]
+        assert "start_date" not in updates
+        assert updates["end_date"] == date(2026, 12, 4)
+
+    def test_widens_itinerary_start_date_for_a_destination_before_it(
+        self, client: TestClient, mock_service: MagicMock
+    ) -> None:
+        mock_service.get_model.return_value = sample_itinerary(
+            start_date=date(2026, 6, 1), end_date=date(2026, 6, 10)
+        )
+        mock_service.update.return_value = sample_itinerary()
+
+        response = client.post(
+            "/itineraries/itin-1/destinations",
+            json={
+                "order": 1,
+                "city": "Accra",
+                "arrival_date": "2026-05-20",
+                "departure_date": "2026-05-25",
+            },
+        )
+
+        assert response.status_code == 201
+        updates = mock_service.update.call_args[0][1]
+        assert updates["start_date"] == date(2026, 5, 20)
+        assert "end_date" not in updates
+
+    def test_leaves_itinerary_dates_unchanged_when_destination_is_within_them(
+        self, client: TestClient, mock_service: MagicMock
+    ) -> None:
+        mock_service.get_model.return_value = sample_itinerary(
+            start_date=date(2026, 6, 1), end_date=date(2026, 6, 10)
+        )
+        mock_service.update.return_value = sample_itinerary()
+
+        response = client.post(
+            "/itineraries/itin-1/destinations",
+            json={
+                "order": 1,
+                "city": "Accra",
+                "arrival_date": "2026-06-02",
+                "departure_date": "2026-06-05",
+            },
+        )
+
+        assert response.status_code == 201
+        updates = mock_service.update.call_args[0][1]
+        assert "start_date" not in updates
+        assert "end_date" not in updates
+
 
 class TestAddActivity:
     def test_returns_404_when_missing(

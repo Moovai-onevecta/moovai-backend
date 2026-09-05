@@ -152,7 +152,19 @@ def add_destination(
     updated_destinations = [
         destination.model_dump() for destination in [*itinerary.destinations, payload]
     ]
-    updated = service.update(itinerary_id, {"destinations": updated_destinations})
+
+    updates: dict[str, Any] = {"destinations": updated_destinations}
+    # A destination's dates aren't required to fall within the itinerary's
+    # own start_date/end_date (e.g. a fresh itinerary created with a rough
+    # placeholder window before any real dates are known) — widen the trip
+    # bounds to cover it so it isn't silently outside the itinerary's own
+    # date range on the frontend's day-by-day view.
+    if payload.arrival_date < itinerary.start_date:
+        updates["start_date"] = payload.arrival_date
+    if payload.departure_date > itinerary.end_date:
+        updates["end_date"] = payload.departure_date
+
+    updated = service.update(itinerary_id, updates)
 
     # Existence + ownership were just confirmed above, so None here would
     # mean the document vanished between the check and the write.

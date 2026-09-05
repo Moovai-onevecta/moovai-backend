@@ -22,6 +22,8 @@ class UserProfileUpsertRequest(BaseModel):
     display_name: str | None = None
     photo_url: str | None = None
     roles: set[UserRole] = Field(default_factory=lambda: {UserRole.TRAVELER})
+    home_city: str | None = None
+    interests: list[str] = Field(default_factory=list)
     provider_type: ProviderType | None = None
     cities_served: list[str] = Field(default_factory=list)
     provider_bio: str | None = None

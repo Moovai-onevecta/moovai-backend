@@ -38,6 +38,12 @@ class UserProfile(BaseModel):
 
     is_active: bool = True
 
+    # Traveler-side profile — collected at signup, used to personalize AI
+    # itinerary/destination suggestions (e.g. as the default departure city).
+    home_city: str | None = None
+
+    interests: list[str] = Field(default_factory=list)
+
     provider_type: ProviderType | None = None
 
     cities_served: list[str] = Field(default_factory=list)

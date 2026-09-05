@@ -14,7 +14,7 @@ every test here runs with no mocking at all.
 from __future__ import annotations
 
 import re
-from typing import Any
+from typing import Any, cast
 
 _CAMEL_BOUNDARY = re.compile(r"_([a-z0-9])")
 _SNAKE_BOUNDARY = re.compile(r"(?<!^)(?=[A-Z])")
@@ -74,7 +74,9 @@ def encode_for_write(
     don't extend to nested keys.
     """
     working = {k: v for k, v in data.items() if not (exclude_none and v is None)}
-    return keys_to_camel_case(working)
+    # keys_to_camel_case is Any-typed (it recurses through nested lists/dicts
+    # of unknown shape); a dict[str, Any] input always yields a dict back.
+    return cast(dict[str, Any], keys_to_camel_case(working))
 
 
 def decode_from_read(data: dict[str, Any] | None) -> dict[str, Any] | None:
@@ -87,4 +89,4 @@ def decode_from_read(data: dict[str, Any] | None) -> dict[str, Any] | None:
     """
     if data is None:
         return None
-    return keys_to_snake_case(data)
+    return cast(dict[str, Any], keys_to_snake_case(data))

@@ -13,7 +13,6 @@ from __future__ import annotations
 from unittest.mock import MagicMock
 
 import pytest
-from google.cloud.firestore_v1.base_query import FieldFilter
 from pydantic import BaseModel
 
 from app.services.base import FirestoreService
@@ -212,9 +211,18 @@ class TestQueryModels:
             _DummyModel, field="owner_uid", equals="abc123"
         )
 
-        mock_collection.where.assert_called_once_with(
-            filter=FieldFilter("ownerUid", "==", "abc123")
+        # FieldFilter has no value-based __eq__ in the installed
+        # google-cloud-firestore version, so two separately constructed
+        # instances are never `==` even when semantically identical —
+        # compare the fields the query actually depends on instead.
+        mock_collection.where.assert_called_once()
+        called_filter = mock_collection.where.call_args.kwargs["filter"]
+        actual = (
+            called_filter.field_path,
+            called_filter.op_string,
+            called_filter.value,
         )
+        assert actual == ("ownerUid", "==", "abc123")
         assert results == [
             _DummyModel(id="id-1", owner_uid="abc123"),
             _DummyModel(id="id-2", owner_uid="abc123"),

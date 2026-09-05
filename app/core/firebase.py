@@ -50,7 +50,7 @@ class FirebaseAdmin:
         needed or wanted in the image.
         """
         key_path = settings.firebase_service_account_key_path
-        if settings.environment == "development" and key_path:
+        if settings.environment != "production" and key_path:
             path = Path(key_path)
             if not path.is_file():
                 raise FileNotFoundError(
@@ -74,14 +74,15 @@ class FirebaseAdmin:
                 else None
             )
             return firebase_admin.initialize_app(
-                cred, options, name=settings.firebase_app_name
+                cred, options=options, name=settings.firebase_app_name
             )
 
     def firestore_client(self) -> firestore.Client:
         return firestore.client(self._app)
 
     def verify_id_token(self, id_token: str) -> dict[str, Any]:
-        return auth.verify_id_token(id_token, app=self._app)
+        decoded: dict[str, Any] = auth.verify_id_token(id_token, app=self._app)
+        return decoded
 
 
 @lru_cache(maxsize=1)

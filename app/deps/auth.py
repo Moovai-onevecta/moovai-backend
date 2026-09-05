@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from collections.abc import Callable
 from typing import Any
 
 from fastapi import Depends, HTTPException, status
@@ -93,7 +94,7 @@ def get_current_uid(
     return user.uid
 
 
-def require_role(role: UserRole):
+def require_role(role: UserRole) -> Callable[[AuthenticatedUser], AuthenticatedUser]:
     def dependency(
         user: AuthenticatedUser = Depends(get_current_user),
     ) -> AuthenticatedUser:

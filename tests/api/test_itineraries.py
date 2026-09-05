@@ -17,8 +17,8 @@ from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
 from app.api.routes.itineraries import router
-from app.core.deps.auth import AuthenticatedUser, get_current_user
-from app.core.deps.services import get_itinerary_service
+from app.deps.auth import AuthenticatedUser, get_current_user
+from app.deps.services import get_itinerary_service
 from app.models.itinerary import Itinerary
 
 

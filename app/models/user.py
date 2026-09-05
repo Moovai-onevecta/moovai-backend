@@ -28,7 +28,7 @@ class UserProfile(BaseModel):
 
     uid: str
 
-    email: EmailStr
+    email: EmailStr | None = None
 
     display_name: str | None = None
 

@@ -1,4 +1,4 @@
-"""Tests for app.core.deps.auth.
+"""Tests for app.deps.auth.
 
 Includes a regression test pinned to the `Field` import bug: importing
 `dataclasses.Field` instead of `pydantic.Field` made `AuthenticatedUser`
@@ -14,7 +14,7 @@ import pytest
 from fastapi import HTTPException
 from fastapi.security import HTTPAuthorizationCredentials
 
-from app.core.deps.auth import AuthenticatedUser, get_current_user
+from app.deps.auth import AuthenticatedUser, get_current_user
 from app.models.user import UserRole
 
 

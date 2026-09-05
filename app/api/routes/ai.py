@@ -100,6 +100,10 @@ async def chat_assistant(
                     blurb=action.blurb,
                     est=action.est,
                     price=action.price,
+                    arrival_date=action.arrival_date,
+                    departure_date=action.departure_date,
+                    country=action.country,
+                    flight_note=action.flight_note,
                     created_at=now,
                 )
                 for action in response.suggested_actions

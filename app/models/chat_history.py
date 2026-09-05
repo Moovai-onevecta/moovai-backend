@@ -39,6 +39,10 @@ class StoredChatAction(BaseModel):
     blurb: str | None = None
     est: str | None = None
     price: Cost | None = None
+    arrival_date: str | None = None
+    departure_date: str | None = None
+    country: str | None = None
+    flight_note: str | None = None
     status: Literal["suggested", "approved", "skipped"] = "suggested"
     created_at: datetime
     resolved_at: datetime | None = None

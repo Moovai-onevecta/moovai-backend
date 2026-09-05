@@ -184,7 +184,7 @@ class ChatContext(BaseModel):
     cities: list[str] = Field(default_factory=list)
 
 
-ActionKind = Literal["add_stop", "add_activity", "approve", "skip"]
+ActionKind = Literal["add_stop", "add_activity", "flight_note", "approve", "skip"]
 
 
 class SuggestedAction(BaseModel):
@@ -202,6 +202,13 @@ class SuggestedAction(BaseModel):
     blurb: str | None = None
     est: str | None = None
     price: Cost | None = None
+    # add_stop only — the assistant's best-inferred stay window for this
+    # city, per the field rules in chat_assistant_system_prompt.
+    arrival_date: str | None = None
+    departure_date: str | None = None
+    country: str | None = None
+    # flight_note only — an advisory string, never a fabricated carrier/time.
+    flight_note: str | None = None
 
 
 class ChatAssistantRequest(BaseModel):

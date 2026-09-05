@@ -148,6 +148,7 @@ def add_destination(
 ) -> Itinerary:
     itinerary = _get_owned_or_404(itinerary_id, user, service)
 
+    payload.order = len(itinerary.destinations) + 1
     updated_destinations = [
         destination.model_dump() for destination in [*itinerary.destinations, payload]
     ]

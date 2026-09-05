@@ -10,7 +10,7 @@ class Destination(BaseModel):
         extra="forbid",
     )
 
-    order: int
+    order: int | None
     city: str
     country: str | None = None
     arrival_date: date

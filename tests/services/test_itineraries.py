@@ -64,6 +64,37 @@ def test_list_for_owner_queries_by_owner_uid(
     ]
 
 
+def test_list_for_owner_orders_most_recently_updated_first(
+    service: ItineraryService, mock_collection: MagicMock
+) -> None:
+    older = MagicMock()
+    older.id = "itin-older"
+    older.to_dict.return_value = {
+        "name": "Old Draft",
+        "ownerUid": "user-1",
+        "startDate": "2026-06-01",
+        "endDate": "2026-06-10",
+        "updatedAt": "2026-01-01T00:00:00+00:00",
+    }
+    newer = MagicMock()
+    newer.id = "itin-newer"
+    newer.to_dict.return_value = {
+        "name": "New Draft",
+        "ownerUid": "user-1",
+        "startDate": "2026-06-01",
+        "endDate": "2026-06-10",
+        "updatedAt": "2026-06-01T00:00:00+00:00",
+    }
+    # Firestore gives no ordering guarantee without order_by — return the
+    # older one first to prove the service does its own sort, not just
+    # happens to pass through query order.
+    mock_collection.where.return_value.stream.return_value = [older, newer]
+
+    results = service.list_for_owner("user-1")
+
+    assert [r.id for r in results] == ["itin-newer", "itin-older"]
+
+
 def test_create_stamps_created_and_updated_at(
     service: ItineraryService, mock_collection: MagicMock
 ) -> None:

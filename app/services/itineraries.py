@@ -19,7 +19,19 @@ class ItineraryService(FirestoreService[Itinerary]):
     id_field = "id"
 
     def list_for_owner(self, owner_uid: str) -> list[Itinerary]:
-        return self.query_models(Itinerary, field="owner_uid", equals=owner_uid)
+        """Most recently updated first — callers (e.g. the frontend picking
+        `[0]` as "the traveler's active draft" when none is specified) need
+        that to mean something. Sorted here rather than via Firestore's
+        order_by so an equality filter plus a sort on a different field
+        doesn't require a composite index; itinerary counts per owner are
+        small enough that in-memory sort is cheap.
+        """
+        itineraries = self.query_models(Itinerary, field="owner_uid", equals=owner_uid)
+        return sorted(
+            itineraries,
+            key=lambda i: i.updated_at or i.created_at or datetime.min.replace(tzinfo=UTC),
+            reverse=True,
+        )
 
     def create(self, itinerary: Itinerary) -> Itinerary:
         now = datetime.now(UTC)

@@ -6,6 +6,7 @@ from app.core.config import Settings, get_settings
 from app.core.firebase import FirebaseClientFactory, get_firebase_admin
 from app.services.ai import AIService
 from app.services.itineraries import ItineraryService
+from app.services.search import SearchService
 from app.services.service_requests import ServiceRequestsService
 from app.services.users import UsersService
 
@@ -34,3 +35,7 @@ def get_service_requests_service(
 
 def get_ai_service(settings: Settings = Depends(get_settings)) -> AIService:
     return AIService(settings)
+
+
+def get_search_service(settings: Settings = Depends(get_settings)) -> SearchService:
+    return SearchService(settings)

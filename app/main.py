@@ -1,8 +1,19 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
+from fastapi.exceptions import ResponseValidationError
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 
-from app.api.routes import ai, bookings, health, itineraries, service_requests, users
+from app.api.routes import (
+    ai,
+    bookings,
+    health,
+    itineraries,
+    search,
+    service_requests,
+    users,
+)
 from app.core.config import get_settings
+from app.exceptions import LLMGenerationError
 
 settings = get_settings()
 
@@ -16,9 +27,48 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+
+@app.exception_handler(LLMGenerationError)
+def handle_llm_generation_error(
+    _request: Request, exc: LLMGenerationError
+) -> JSONResponse:
+    return JSONResponse(
+        status_code=502,
+        content={
+            "error": {
+                "code": "LLM_GENERATION_FAILED",
+                "message": exc.message,
+                "details": exc.detail,
+            }
+        },
+    )
+
+
+@app.exception_handler(ResponseValidationError)
+def handle_response_validation_error(
+    _request: Request, exc: ResponseValidationError
+) -> JSONResponse:
+    # The model's JSON parsed fine and passed our own model_validate (see the
+    # *_ai service modules), but FastAPI's own response_model check still
+    # failed. Kept as a distinct error code from LLM_GENERATION_FAILED so
+    # callers can tell "the model said something odd" apart from "the
+    # provider/network failed outright".
+    return JSONResponse(
+        status_code=502,
+        content={
+            "error": {
+                "code": "LLM_RESPONSE_INVALID",
+                "message": "Model output did not match the expected shape",
+                "details": str(exc),
+            }
+        },
+    )
+
+
 app.include_router(health.router)
 app.include_router(users.router)
 app.include_router(itineraries.router)
 app.include_router(service_requests.router)
 app.include_router(bookings.router)
 app.include_router(ai.router)
+app.include_router(search.router)

@@ -13,8 +13,15 @@ class Settings(BaseSettings):
     firebase_service_account_key_path: str | None = None
     firebase_app_name: str = "moovai"
 
-    anthropic_api_key: str
-    anthropic_model: str = "claude-sonnet-5"
+    # AI provider — we call OpenAI's hosted REST API directly (no SDK), never
+    # host or run a model ourselves. gpt-3.5-turbo is the default per product
+    # requirements; override via OPENAI_MODEL for a different variant.
+    openai_api_key: str
+    openai_model: str = "gpt-3.5-turbo"
+
+    # SerpApi — flight/hotel/destination search (Google Flights/Hotels/Search
+    # engines). See app/services/search.py.
+    serpapi_api_key: str
 
     @property
     def cors_origin_list(self) -> list[str]:

@@ -8,6 +8,7 @@ from app.deps.services import (
     get_ai_service,
     get_chat_history_service,
     get_itinerary_service,
+    get_meridian_ai_service,
 )
 from app.models.ai import ChatRequest, ChatResponse
 from app.models.chat_history import ChatHistory, StoredChatAction, StoredChatMessage
@@ -26,6 +27,7 @@ from app.services import chat_ai, destinations_ai, itinerary_ai, questions_ai
 from app.services.ai import AIService
 from app.services.chat_history import ChatHistoryService
 from app.services.itineraries import ItineraryService
+from app.services.meridian_ai import MeridianAiService
 
 router = APIRouter(prefix="/ai", tags=["ai"])
 
@@ -175,7 +177,7 @@ async def suggest_destinations(
 async def suggest_questions(
     payload: SuggestQuestionsRequest,
     _user: AuthenticatedUser = Depends(get_current_user),
-    ai: AIService = Depends(get_ai_service),
+    ai: MeridianAiService = Depends(get_meridian_ai_service),
 ) -> SuggestQuestionsResponse:
     return await questions_ai.suggest_questions(ai, payload)
 
@@ -184,6 +186,6 @@ async def suggest_questions(
 async def generate_itinerary(
     payload: GenerateItineraryRequest,
     _user: AuthenticatedUser = Depends(get_current_user),
-    ai: AIService = Depends(get_ai_service),
+    ai: MeridianAiService = Depends(get_meridian_ai_service),
 ) -> GenerateItineraryResponse:
     return await itinerary_ai.generate_itinerary(ai, payload)

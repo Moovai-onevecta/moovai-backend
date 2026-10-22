@@ -20,6 +20,7 @@ from app.deps.services import (
     get_ai_service,
     get_chat_history_service,
     get_itinerary_service,
+    get_meridian_ai_service,
 )
 from app.exceptions import LLMGenerationError
 from app.main import handle_llm_generation_error
@@ -29,6 +30,11 @@ from app.models.itinerary import Itinerary
 
 @pytest.fixture
 def mock_ai() -> AsyncMock:
+    return AsyncMock()
+
+
+@pytest.fixture
+def mock_meridian_ai() -> AsyncMock:
     return AsyncMock()
 
 
@@ -58,6 +64,7 @@ def mock_chat_history_service() -> MagicMock:
 @pytest.fixture
 def client(
     mock_ai: AsyncMock,
+    mock_meridian_ai: AsyncMock,
     current_user: AuthenticatedUser,
     mock_itinerary_service: MagicMock,
     mock_chat_history_service: MagicMock,
@@ -67,6 +74,7 @@ def client(
     app.include_router(router)
     app.dependency_overrides[get_current_user] = lambda: current_user
     app.dependency_overrides[get_ai_service] = lambda: mock_ai
+    app.dependency_overrides[get_meridian_ai_service] = lambda: mock_meridian_ai
     app.dependency_overrides[get_itinerary_service] = lambda: mock_itinerary_service
     app.dependency_overrides[get_chat_history_service] = lambda: (
         mock_chat_history_service
@@ -279,9 +287,9 @@ class TestSuggestDestinations:
 
 class TestSuggestQuestions:
     def test_returns_empty_list_for_unambiguous_brief(
-        self, client: TestClient, mock_ai: AsyncMock
+        self, client: TestClient, mock_meridian_ai: AsyncMock
     ) -> None:
-        mock_ai.complete_json.return_value = {"questions": []}
+        mock_meridian_ai.suggest_questions.return_value = {"questions": []}
 
         response = client.post(
             "/ai/questions/suggest",
@@ -290,11 +298,17 @@ class TestSuggestQuestions:
 
         assert response.status_code == 200
         assert response.json() == {"questions": []}
+        mock_meridian_ai.suggest_questions.assert_awaited_once()
 
 
 class TestGenerateItinerary:
-    def test_returns_options(self, client: TestClient, mock_ai: AsyncMock) -> None:
-        mock_ai.complete_json.return_value = {
+    def test_returns_options(
+        self, client: TestClient, mock_meridian_ai: AsyncMock
+    ) -> None:
+        # Shape returned by meridian-ai: days keyed by label, each holding
+        # destinations keyed by city — translated to moovai's flat day list
+        # by app.services.meridian_mapping.
+        mock_meridian_ai.generate_itinerary.return_value = {
             "options": [
                 {
                     "letter": "A",
@@ -306,26 +320,26 @@ class TestGenerateItinerary:
                         "currency": "USD",
                         "is_estimate": True,
                     },
-                    "days": [
-                        {
-                            "day_number": 1,
-                            "city": "Accra",
-                            "date": "2026-11-12",
-                            "activities": [
-                                {
-                                    "title": "Jamestown walk",
-                                    "est": "Est. 3 hrs",
-                                    "price": {
+                    "days": {
+                        "Day 1": {
+                            "destinations": {
+                                "Accra": {
+                                    "activities": ["Jamestown walk"],
+                                    "estimated_cost": {
                                         "amount": 34,
                                         "currency": "USD",
                                         "is_estimate": True,
                                     },
                                 }
-                            ],
+                            }
                         }
-                    ],
+                    },
+                    "flights": [],
+                    "stays": [],
                 }
-            ]
+            ],
+            "provider_used": "openai",
+            "skipped_providers": [],
         }
 
         response = client.post(
@@ -337,3 +351,9 @@ class TestGenerateItinerary:
         body = response.json()
         assert body["options"][0]["letter"] == "A"
         assert body["options"][0]["is_ai_pick"] is True
+        day = body["options"][0]["days"][0]
+        assert day["day_number"] == 1
+        assert day["city"] == "Accra"
+        assert day["activities"][0]["title"] == "Jamestown walk"
+        assert day["activities"][0]["price"]["amount"] == 34
+        mock_meridian_ai.generate_itinerary.assert_awaited_once()

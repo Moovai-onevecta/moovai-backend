@@ -23,6 +23,13 @@ class Settings(BaseSettings):
     # engines). See app/services/search.py.
     serpapi_api_key: str
 
+    # meridian-ai — shared Meridian AI microservice. Itinerary generation and
+    # clarifying-question suggestion are delegated to it (see
+    # app/services/meridian_ai.py) instead of calling OpenAI directly.
+    meridian_ai_url: str = "http://127.0.0.1:9000"
+    meridian_ai_service_token: str | None = None
+    meridian_ai_timeout: float = 90.0
+
     @property
     def cors_origin_list(self) -> list[str]:
         return [

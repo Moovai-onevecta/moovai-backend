@@ -7,6 +7,7 @@ from app.core.firebase import FirebaseClientFactory, get_firebase_admin
 from app.services.ai import AIService
 from app.services.chat_history import ChatHistoryService
 from app.services.itineraries import ItineraryService
+from app.services.meridian_ai import MeridianAiService
 from app.services.search import SearchService
 from app.services.service_requests import ServiceRequestsService
 from app.services.users import UsersService
@@ -42,6 +43,12 @@ def get_chat_history_service(
 
 def get_ai_service(settings: Settings = Depends(get_settings)) -> AIService:
     return AIService(settings)
+
+
+def get_meridian_ai_service(
+    settings: Settings = Depends(get_settings),
+) -> MeridianAiService:
+    return MeridianAiService(settings)
 
 
 def get_search_service(settings: Settings = Depends(get_settings)) -> SearchService:
